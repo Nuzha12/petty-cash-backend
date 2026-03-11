@@ -32,3 +32,6 @@ def delete_manager(db: Session, manager):
 
     return manager
 
+
+def get_manager_by_email(db: Session, email: str):
+    return db.query(Manager).filter(Manager.email == email).first()
