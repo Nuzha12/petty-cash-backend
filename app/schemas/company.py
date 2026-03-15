@@ -35,6 +35,13 @@ class CompanyCreate(CompanyBase):
     pass
 
 
+class CompanyUpdate(BaseModel):
+    company_name: str | None = None
+    address: str | None = None
+    contact: str | None = None
+
+
+
 class CompanyResponse(CompanyBase):
     company_id: int
     created_at: datetime
@@ -42,8 +49,4 @@ class CompanyResponse(CompanyBase):
 
     model_config = ConfigDict(from_attributes=True)
 
-class CompanyUpdate(BaseModel):
-    company_name: str | None = None
-    address: str | None = None
-    contact: str | None = None
 
