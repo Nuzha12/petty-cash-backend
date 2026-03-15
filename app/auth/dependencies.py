@@ -1,37 +1,38 @@
-import os
-from dotenv import load_dotenv
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
+from fastapi import Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+from jose import jwt
 
-load_dotenv()
+from app.database import get_db
+from app.models.manager import Manager
+import os
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 
-security = HTTPBearer()
 
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-
-    token = credentials.credentials
+def verify_token(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
 
     try:
-
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-
-        manager_id = payload.get("manager_id")
+        manager_id: int = payload.get("manager_id")
 
         if manager_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
-            )
+            raise HTTPException(status_code=401, detail="Invalid token")
 
-        return payload
+    except:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
-    except JWTError:
+    manager = db.query(Manager).filter(
+        Manager.manager_id == manager_id
+    ).first()
 
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token invalid"
-        )
+    if manager is None:
+        raise HTTPException(status_code=401, detail="Manager not found")
+
+    return manager
