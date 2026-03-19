@@ -4,7 +4,7 @@ from app.database import Base, engine
 from app.models.company import Company
 from app.models.manager import Manager
 
-from app.routers import company, manager, auth, category, budget
+from app.routers import company, manager, auth, category, budget, expense
 
 app = FastAPI(title="Petty Cash Management System API")
 
@@ -15,6 +15,7 @@ app.include_router(company.router)
 app.include_router(manager.router)
 app.include_router(category.router)
 app.include_router(budget.router)
+app.include_router(expense.router)
 
 @app.get("/")
 def root():
