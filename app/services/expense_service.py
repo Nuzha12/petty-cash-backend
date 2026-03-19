@@ -117,3 +117,5 @@ def reject_expense(db: Session, expense_id: int, manager):
         raise HTTPException(status_code=400, detail="Already processed")
 
     return expense_repository.update_expense_status(db, expense, ExpenseStatus.rejected)
+
+
