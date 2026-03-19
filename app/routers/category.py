@@ -10,8 +10,8 @@ router = APIRouter(prefix="/categories", tags=["categories"])
 
 
 @router.post("/", response_model=CategoryResponse)
-def create_category(category: CategoryCreate, db: Session = Depends(get_db), user= Depends(verify_token)):
-    return category_service.create_category(db, category, user)
+def create_category(category: CategoryCreate, db: Session = Depends(get_db), manager= Depends(verify_token)):
+    return category_service.create_category(db, category, manager)
 
 
 @router.get("/", response_model=list[CategoryResponse])
