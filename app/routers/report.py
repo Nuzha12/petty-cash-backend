@@ -7,14 +7,19 @@ from app.services import report_service
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
-@router.get("/summary")
-def get_summary(month: int, year: int, db: Session= Depends(get_db), manager=Depends(verify_token)):
+@router.get("/monthly-summary")
+def monthly_summary(month: int, year: int, db: Session = Depends(get_db), manager=Depends(verify_token)):
     return report_service.get_monthly_summary(db, manager, month, year)
 
+
 @router.get("/category")
-def get_category_report(month: int, year: int, db: Session= Depends(get_db), manager= Depends(verify_token)):
+def category_report(month: int, year: int, db: Session= Depends(get_db), manager= Depends(verify_token)):
     return report_service.get_category_report(db, manager, month, year)
 
 @router.get("/budget")
-def get_budget_report(month: int, year: int, db: Session= Depends(get_db), manager= Depends(verify_token)):
+def budget_report(month: int, year: int, db: Session= Depends(get_db), manager= Depends(verify_token)):
     return report_service.get_budget_report(db, manager, month, year)
+
+@router.get("/daily")
+def daily_report(month: int, year: int, db: Session = Depends(get_db), manager = Depends(verify_token)):
+    return report_service.get_daily_report(db, manager, month, year)

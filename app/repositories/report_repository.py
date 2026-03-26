@@ -1,3 +1,5 @@
+from itertools import groupby
+
 from sqlalchemy import func, extract
 from sqlalchemy.orm import Session
 
@@ -16,10 +18,10 @@ def get_total_expenses(db: Session, company_id: int, month: int, year: int):
         Expense.status == ExpenseStatus.approved
     ).scalar()
 
-# category wise expenses
+
 def get_category_expenses(db: Session, company_id: int, month: int, year: int):
     return db.query(
-        Category.name,
+        Category.name.label("category"),
         func.coalesce(func.sum(Expense.amount), 0).label("total")
     ).join(Expense, Expense.category_id == Category.category_id) \
         .filter(
@@ -34,7 +36,7 @@ def get_category_expenses(db: Session, company_id: int, month: int, year: int):
 
 def get_budget_vs_actual(db: Session, company_id: int, month: int, year: int):
     return db.query(
-        Category.name,
+        Category.name.label("category"),
         Budget.amount.label("budget"),
         func.coalesce(func.sum(Expense.amount), 0).label("spent")
     ).join(Category, Category.category_id == Budget.category_id)\
@@ -53,5 +55,22 @@ def get_budget_vs_actual(db: Session, company_id: int, month: int, year: int):
     )\
      .group_by(Category.name, Budget.amount)\
      .all()
+
+def get_daily_expenses(db: Session, company_id: int, month: int, year: int):
+    return db.query(
+        func.date(Expense.expense_date).label("date"),
+        func.coalesce(func.sum(Expense.amount), 0).label("total")
+    ).filter(
+        Expense.company_id == company_id,
+        extract("month", Expense.expense_date) == month,
+        extract("year", Expense.expense_date) == year,
+        Expense.status == ExpenseStatus.approved
+    )\
+        .group_by(func.date(Expense.expense_date))\
+        .order_by(func.date(Expense.expense_date))\
+        .all()
+
+
+
 
 
