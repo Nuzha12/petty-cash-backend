@@ -32,6 +32,13 @@ def get_budget(db: Session, budget_id: int):
         Budget.budget_id == budget_id
     ).first()
 
+def get_budget_by_category(db, category_id, company_id, month, year):
+    return db.query(Budget).filter(
+        Budget.category_id == category_id,
+        Budget.company_id == company_id,
+        Budget.month == month,
+        Budget.year == year
+    ).first()
 
 def delete_budget(db: Session, budget: Budget):
     db.delete(budget)

@@ -1,49 +1,40 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from fastapi import HTTPException
-
+from datetime import datetime
 
 from app.models.expense import Expense, ExpenseStatus
-from app.models.budget import Budget
 from app.repositories import expense_repository
-from app.schemas.expense import ExpenseCreate, ExpenseUpdate
+from app.repositories.budget_repository import get_budget_by_category
 
 
-def create_expense(db: Session, expense: ExpenseCreate, manager):
+from datetime import datetime
 
-    company_id = manager.company_id
-
-    budget = db.query(Budget).filter(
-        Budget.company_id == company_id,
-        Budget.category_id == expense.category_id,
-        Budget.month == expense.expense_date.month,
-        Budget.year == expense.expense_date.year
-    ).first()
-
-    if not budget:
-        raise HTTPException(status_code=400, detail="No budget set for this category/month")
-
-    total_expenses = expense_repository.get_total_expenses_for_month(
+def create_expense(db: Session, expense, manager):
+    budget = get_budget_by_category(
         db,
-        company_id,
         expense.category_id,
+        manager.company_id,
         expense.expense_date.month,
-        expense.expense_date.year)
-
-    if expense.amount > (budget.amount - total_expenses):
-        raise HTTPException(status_code=400, detail="Budget exceeded")
-
-    new_expense = Expense(
-        company_id= company_id,
-        manager_id= manager.manager_id,
-        category_id= expense.category_id,
-        amount= expense.amount,
-        description= expense.description,
-        expense_date= expense.expense_date
+        expense.expense_date.year
     )
 
-    return expense_repository.create_expense(db, new_expense)
+    if not budget:
+        raise HTTPException(status_code=400, detail="please set a budget for this category first")
 
+    if expense.amount > budget.amount:
+        raise HTTPException(status_code=400, detail="budget exceeded")
+
+    db_expense = Expense(
+        company_id=manager.company_id,
+        category_id=expense.category_id,
+        manager_id=manager.manager_id,
+        amount=expense.amount,
+        description=expense.description,
+        expense_date=expense.expense_date,
+        status=ExpenseStatus.pending
+    )
+
+    return expense_repository.create_expense(db, db_expense)
 
 def get_expenses(db: Session, manager):
     return expense_repository.get_expenses_by_company(db, manager.company_id)
@@ -62,7 +53,7 @@ def get_expense(db: Session, expense_id: int, manager):
     return expense
 
 
-def update_expense(db: Session, expense_id: int, data: ExpenseUpdate, manager):
+def update_expense(db: Session, expense_id: int, data, manager):
     expense = expense_repository.get_expense_by_id(db, expense_id, manager.company_id)
 
     if not expense:
@@ -76,14 +67,12 @@ def update_expense(db: Session, expense_id: int, data: ExpenseUpdate, manager):
     return expense_repository.update_expense(db, expense, update_data)
 
 
-
 def delete_expense(db: Session, expense_id: int, manager):
     expense = expense_repository.get_expense_by_id(
         db,
         expense_id,
         manager.company_id
     )
-
 
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
@@ -107,7 +96,6 @@ def approve_expense(db: Session, expense_id: int, manager):
 
 
 def reject_expense(db: Session, expense_id: int, manager):
-
     expense = expense_repository.get_expense_by_id(db, expense_id, manager.company_id)
 
     if not expense:
