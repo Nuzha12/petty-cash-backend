@@ -40,6 +40,13 @@ def get_total_expenses_for_month(db: Session, company_id: int, category_id: int,
         Expense.status == ExpenseStatus.approved
     ).scalar()
 
+def get_recent_expenses(db, company_id: int, limit: int = 5):
+    return db.query(Expense).filter(
+        Expense.company_id == company_id
+    ).order_by(
+        Expense.created_at.desc()
+    ).limit(limit).all()
+
 def update_expense(db: Session, expense: Expense, update_date: dict):
     for key, value in update_date.items():
         setattr(expense, key, value)

@@ -1,8 +1,32 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 
+from app.models.budget import Budget
 from app.models.expense import Expense
 from app.models.category import Category
+
+
+def get_budget_vs_actual(db: Session, company_id: int, month: int, year: int):
+    results = db.query(
+        Budget.category_id,
+        Budget.amount,
+        func.coalesce(func.sum(Expense.amount), 0)
+    ).outerjoin(
+        Expense,
+        (Expense.category_id == Budget.category_id) &
+        (Expense.company_id == company_id) &
+        (extract("month", Expense.expense_date) == month) &
+        (extract("year", Expense.expense_date) == year)
+    ).filter(
+        Budget.company_id == company_id,
+        Budget.month == month,
+        Budget.year == year
+    ).group_by(
+        Budget.category_id,
+        Budget.amount
+    ).all()
+
+    return results
 
 
 def get_dashboard_data(db: Session, company_id: int, month: int, year: int):
@@ -33,8 +57,38 @@ def get_dashboard_data(db: Session, company_id: int, month: int, year: int):
 
     top_category = max(categories, key=lambda x: x["total"])["category"] if categories else None
 
+    budget_data = get_budget_vs_actual(db, company_id, month, year)
+
+    budget_vs_actual = [
+        {
+            "category_id": b[0],
+            "budget": float(b[1]),
+            "spent": float(b[2]),
+            "remaining": float(b[1] - b[2])
+        }
+        for b in budget_data
+    ]
+
+    recent_expenses = db.query(Expense).filter(
+        Expense.company_id == company_id
+    ).order_by(
+        Expense.created_at.desc()
+    ).limit(5).all()
+
+    recent_data = [
+        {
+            "amount": float(e.amount),
+            "description": e.description,
+            "date": str(e.expense_date),
+            "category_id": e.category_id
+        }
+        for e in recent_expenses
+    ]
+
     return {
         "total_expenses": float(total),
         "categories": categories,
-        "top_category": top_category
+        "top_category": top_category,
+        "budget_vs_actual": budget_vs_actual,
+        "recent_expenses": recent_data
     }
