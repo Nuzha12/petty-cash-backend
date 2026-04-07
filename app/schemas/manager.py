@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, Field
 
 
 class ManagerBase(BaseModel):
@@ -10,12 +10,12 @@ class ManagerBase(BaseModel):
 
 
 class ManagerCreate(ManagerBase):
-    password: str
+    password: str = Field(..., min_length=6)
 
 class ManagerUpdate(BaseModel):
     name: str | None = None
     email: EmailStr | None = None
-    password: str | None = None
+    password: str | None = Field(..., min_length=6)
 
 class ManagerResponse(ManagerBase):
     manager_id: int

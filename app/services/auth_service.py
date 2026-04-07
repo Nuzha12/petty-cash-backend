@@ -7,6 +7,11 @@ from app.core.security import verify_password
 
 
 def login(db: Session, email: str, password: str):
+    if len(password) < 6:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 6 characters"
+        )
 
     manager = db.query(Manager).filter(
         Manager.email == email
