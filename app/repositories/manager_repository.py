@@ -3,19 +3,28 @@ from app.models.manager import Manager
 
 
 def create_manager(db: Session, manager_data: dict):
-    manager = Manager(**manager_data) #unpacking dic
+    manager = Manager(**manager_data)
     db.add(manager)
     db.commit()
     db.refresh(manager)
-
     return manager
 
 
-def get_managers(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Manager).offset(skip).limit(limit).all()
+def get_managers(db: Session, company_id: int, skip: int = 0, limit: int = 100):
+    return db.query(Manager)\
+        .filter(Manager.company_id == company_id)\
+        .offset(skip)\
+        .limit(limit)\
+        .all()
 
-def get_manager_by_id(db: Session, manager_id: int):
-    return db.query(Manager).filter(Manager.manager_id == manager_id).first()
+
+def get_manager_by_id(db: Session, manager_id: int, company_id: int):
+    return db.query(Manager)\
+        .filter(
+            Manager.manager_id == manager_id,
+            Manager.company_id == company_id
+        ).first()
+
 
 def update_manager(db: Session, db_manager, update_data: dict):
     for key, value in update_data.items():
@@ -29,7 +38,6 @@ def update_manager(db: Session, db_manager, update_data: dict):
 def delete_manager(db: Session, manager):
     db.delete(manager)
     db.commit()
-
     return manager
 
 

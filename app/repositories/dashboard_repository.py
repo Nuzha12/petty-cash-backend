@@ -8,9 +8,11 @@ from app.models.category import Category
 
 def get_budget_vs_actual(db: Session, company_id: int, month: int, year: int):
     results = db.query(
-        Budget.category_id,
+        Category.name,
         Budget.amount,
         func.coalesce(func.sum(Expense.amount), 0)
+    ).join(
+        Category, Category.category_id == Budget.category_id
     ).outerjoin(
         Expense,
         (Expense.category_id == Budget.category_id) &
@@ -22,7 +24,7 @@ def get_budget_vs_actual(db: Session, company_id: int, month: int, year: int):
         Budget.month == month,
         Budget.year == year
     ).group_by(
-        Budget.category_id,
+        Category.name,
         Budget.amount
     ).all()
 
@@ -61,7 +63,7 @@ def get_dashboard_data(db: Session, company_id: int, month: int, year: int):
 
     budget_vs_actual = [
         {
-            "category_id": b[0],
+            "category": b[0],
             "budget": float(b[1]),
             "spent": float(b[2]),
             "remaining": float(b[1] - b[2])
@@ -69,7 +71,12 @@ def get_dashboard_data(db: Session, company_id: int, month: int, year: int):
         for b in budget_data
     ]
 
-    recent_expenses = db.query(Expense).filter(
+    recent_expenses = db.query(
+        Expense,
+        Category.name
+    ).join(
+        Category, Expense.category_id == Category.category_id
+    ).filter(
         Expense.company_id == company_id
     ).order_by(
         Expense.created_at.desc()
@@ -77,10 +84,10 @@ def get_dashboard_data(db: Session, company_id: int, month: int, year: int):
 
     recent_data = [
         {
-            "amount": float(e.amount),
-            "description": e.description,
-            "date": str(e.expense_date),
-            "category_id": e.category_id
+            "amount": float(e[0].amount),
+            "description": e[0].description,
+            "date": str(e[0].expense_date),
+            "category": e[1]
         }
         for e in recent_expenses
     ]

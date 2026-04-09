@@ -7,23 +7,23 @@ from app.repositories import manager_repository
 from app.schemas.manager import ManagerCreate, ManagerUpdate
 
 
-def create_manager(db: Session, manager: ManagerCreate):
+def create_manager(db: Session, manager: ManagerCreate, company_id: int):
 
     manager_data = manager.model_dump()
-
     manager_data["password"] = hash_password(manager_data["password"])
+    manager_data["company_id"] = company_id
 
     return manager_repository.create_manager(db, manager_data)
 
 
-def get_managers(db: Session, skip: int = 0, limit: int = 100):
+def get_managers(db: Session, company_id: int, skip: int = 0, limit: int = 100):
 
-    return manager_repository.get_managers(db, skip, limit)
+    return manager_repository.get_managers(db, company_id, skip, limit)
 
 
-def get_manager(db: Session, manager_id: int):
+def get_manager(db: Session, manager_id: int, company_id: int):
 
-    manager = manager_repository.get_manager_by_id(db, manager_id)
+    manager = manager_repository.get_manager_by_id(db, manager_id, company_id)
 
     if not manager:
         raise HTTPException(
@@ -34,9 +34,9 @@ def get_manager(db: Session, manager_id: int):
     return manager
 
 
-def update_manager_partial(db: Session, manager_id: int, manager: ManagerUpdate):
+def update_manager_partial(db: Session, manager_id: int, manager: ManagerUpdate, company_id: int):
 
-    db_manager = manager_repository.get_manager_by_id(db, manager_id)
+    db_manager = manager_repository.get_manager_by_id(db, manager_id, company_id)
 
     if not db_manager:
         raise HTTPException(
@@ -52,9 +52,9 @@ def update_manager_partial(db: Session, manager_id: int, manager: ManagerUpdate)
     return manager_repository.update_manager(db, db_manager, update_data)
 
 
-def update_manager_full(db: Session, manager_id: int, manager: ManagerCreate):
+def update_manager_full(db: Session, manager_id: int, manager: ManagerCreate, company_id: int):
 
-    db_manager = manager_repository.get_manager_by_id(db, manager_id)
+    db_manager = manager_repository.get_manager_by_id(db, manager_id, company_id)
 
     if not db_manager:
         raise HTTPException(
@@ -70,9 +70,9 @@ def update_manager_full(db: Session, manager_id: int, manager: ManagerCreate):
     return manager_repository.update_manager(db, db_manager, update_data)
 
 
-def delete_manager(db: Session, manager_id: int):
+def delete_manager(db: Session, manager_id: int, company_id: int):
 
-    manager = manager_repository.get_manager_by_id(db, manager_id)
+    manager = manager_repository.get_manager_by_id(db, manager_id, company_id)
 
     if not manager:
         raise HTTPException(

@@ -12,7 +12,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 Base = declarative_base()
 
-# Dependency to get the database session in your routes
+
 def get_db():
     db = SessionLocal()
     try:

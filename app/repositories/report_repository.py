@@ -1,4 +1,3 @@
-from itertools import groupby
 
 from sqlalchemy import func, extract
 from sqlalchemy.orm import Session

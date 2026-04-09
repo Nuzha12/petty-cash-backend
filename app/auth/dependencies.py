@@ -1,38 +1,32 @@
-from fastapi import Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
-from jose import jwt
-
-from app.database import get_db
-from app.models.manager import Manager
 import os
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+from fastapi import Request, HTTPException
+from jose import jwt
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 
 
-def verify_token(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
-):
+class TokenData:
+    def __init__(self, manager_id: int, company_id: int):
+        self.manager_id = manager_id
+        self.company_id = company_id
 
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        manager_id: int = payload.get("manager_id")
 
-        if manager_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
+def verify_token(request: Request):
 
-    except:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    auth_header = request.headers.get("Authorization")
 
-    manager = db.query(Manager).filter(
-        Manager.manager_id == manager_id
-    ).first()
+    print("HEADER RECEIVED:", auth_header)
 
-    if manager is None:
-        raise HTTPException(status_code=401, detail="Manager not found")
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Token missing")
 
-    return manager
+    token = auth_header.replace("Bearer ", "").strip()
+
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+    return TokenData(
+        manager_id=payload.get("manager_id"),
+        company_id=payload.get("company_id"),
+    )
