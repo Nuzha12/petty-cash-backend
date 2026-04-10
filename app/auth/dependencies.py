@@ -1,10 +1,15 @@
 import os
+import logging
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import jwt, ExpiredSignatureError, JWTError
 
-from fastapi import Request, HTTPException
-from jose import jwt
+logger = logging.getLogger("auth")
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
+
+security = HTTPBearer()
 
 
 class TokenData:
@@ -13,20 +18,23 @@ class TokenData:
         self.company_id = company_id
 
 
-def verify_token(request: Request):
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
 
-    auth_header = request.headers.get("Authorization")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
-    print("HEADER RECEIVED:", auth_header)
+        logger.info(f"Token valid: {payload}")
 
-    if not auth_header:
-        raise HTTPException(status_code=401, detail="Token missing")
+        return TokenData(
+            manager_id=payload.get("manager_id"),
+            company_id=payload.get("company_id"),
+        )
 
-    token = auth_header.replace("Bearer ", "").strip()
+    except ExpiredSignatureError:
+        logger.error("Token expired")
+        raise HTTPException(status_code=401, detail="Token expired")
 
-    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-
-    return TokenData(
-        manager_id=payload.get("manager_id"),
-        company_id=payload.get("company_id"),
-    )
+    except JWTError:
+        logger.error("Invalid token")
+        raise HTTPException(status_code=401, detail="Invalid token")

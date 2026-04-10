@@ -43,23 +43,36 @@ def create_expense(db: Session, expense, manager):
     return expense_repository.create_expense(db, db_expense)
 
 
-def get_expenses(db: Session, manager):
-    return expense_repository.get_expenses_by_company(db, manager.company_id)
+def get_expenses(db, manager):
+    rows = expense_repository.get_expenses_by_company(db, manager.company_id)
+
+    return [
+        {
+            "expense_id": r[0].expense_id,
+            "amount": float(r[0].amount),
+            "description": r[0].description or "",
+            "category": r[1],
+            "status": r[0].status.value
+        }
+        for r in rows
+    ]
 
 
 def get_expense(db: Session, expense_id: int, manager):
     expense = expense_repository.get_expense_by_id(db, expense_id, manager.company_id)
     if not expense:
-        raise HTTPException(status_code=404, detail="Expense not found")
+        raise HTTPException(404, "Expense not found")
     return expense
 
 
 def update_expense(db: Session, expense_id: int, data, manager):
     expense = expense_repository.get_expense_by_id(db, expense_id, manager.company_id)
+
     if not expense:
-        raise HTTPException(status_code=404, detail="Expense not found")
+        raise HTTPException(404, "Expense not found")
+
     if expense.status != ExpenseStatus.pending:
-        raise HTTPException(status_code=400, detail="Only pending expenses can be updated")
+        raise HTTPException(400, "Only pending expenses can be updated")
 
     update_data = data.model_dump(exclude_unset=True)
     return expense_repository.update_expense(db, expense, update_data)
@@ -67,28 +80,37 @@ def update_expense(db: Session, expense_id: int, data, manager):
 
 def delete_expense(db: Session, expense_id: int, manager):
     expense = expense_repository.get_expense_by_id(db, expense_id, manager.company_id)
+
     if not expense:
-        raise HTTPException(status_code=404, detail="Expense not found")
+        raise HTTPException(404, "Expense not found")
+
     if expense.status != ExpenseStatus.pending:
-        raise HTTPException(status_code=400, detail="Cannot delete approved/rejected expense")
+        raise HTTPException(400, "Cannot delete approved/rejected expense")
+
     return expense_repository.delete_expense(db, expense)
 
 
 def approve_expense(db: Session, expense_id: int, manager):
     expense = expense_repository.get_expense_by_id(db, expense_id, manager.company_id)
+
     if not expense:
-        raise HTTPException(status_code=404, detail="Expense not found")
+        raise HTTPException(404, "Expense not found")
+
     if expense.status != ExpenseStatus.pending:
-        raise HTTPException(status_code=400, detail="Already processed")
+        raise HTTPException(400, "Already processed")
+
     return expense_repository.update_expense_status(db, expense, ExpenseStatus.approved)
 
 
 def reject_expense(db: Session, expense_id: int, manager):
     expense = expense_repository.get_expense_by_id(db, expense_id, manager.company_id)
+
     if not expense:
-        raise HTTPException(status_code=404, detail="Expense not found")
+        raise HTTPException(404, "Expense not found")
+
     if expense.status != ExpenseStatus.pending:
-        raise HTTPException(status_code=400, detail="Already processed")
+        raise HTTPException(400, "Already processed")
+
     return expense_repository.update_expense_status(db, expense, ExpenseStatus.rejected)
 
 
@@ -96,13 +118,21 @@ def get_dashboard_summary(db: Session, manager):
     now = datetime.now()
     expenses = expense_repository.get_expenses_by_company(db, manager.company_id)
 
-    total_approved = sum(e.amount for e in expenses if e.status == ExpenseStatus.approved)
-    total_pending = sum(e.amount for e in expenses if e.status == ExpenseStatus.pending)
+    total_approved = sum(float(e[0].amount) for e in expenses if e[0].status == ExpenseStatus.approved)
+    total_pending = sum(float(e[0].amount) for e in expenses if e[0].status == ExpenseStatus.pending)
 
     recent = expenses[:5]
 
     return {
-        "total_expense": float(total_approved + total_pending),
+        "total_expense": total_approved + total_pending,
         "month": f"{now.month}/{now.year}",
-        "recent_transactions": recent
+        "recent_transactions": [
+            {
+                "amount": float(e[0].amount),
+                "description": e[0].description,
+                "category": e[1],
+                "status": e[0].status.value
+            }
+            for e in recent
+        ]
     }

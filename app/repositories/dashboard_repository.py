@@ -57,7 +57,8 @@ def get_dashboard_data(db: Session, company_id: int, month: int, year: int):
         for c in category_data
     ]
 
-    top_category = max(categories, key=lambda x: x["total"])["category"] if categories else None
+    top_category = max(categories, key=lambda x: x["total"])["category"] if categories else "-"
+
 
     budget_data = get_budget_vs_actual(db, company_id, month, year)
 

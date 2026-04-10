@@ -1,6 +1,7 @@
 from sqlalchemy import func, extract
 from sqlalchemy.orm import Session
 from app.models.expense import Expense, ExpenseStatus
+from app.models.category import Category
 
 def create_expense(db: Session, expense: Expense):
     db.add(expense)
@@ -9,9 +10,16 @@ def create_expense(db: Session, expense: Expense):
     return expense
 
 def get_expenses_by_company(db: Session, company_id: int):
-    return db.query(Expense).filter(
+    return db.query(
+        Expense,
+        Category.name
+    ).join(
+        Category, Expense.category_id == Category.category_id
+    ).filter(
         Expense.company_id == company_id
-    ).order_by(Expense.created_at.desc()).all()
+    ).order_by(
+        Expense.created_at.desc()
+    ).all()
 
 def get_expense_by_id(db: Session, expense_id: int, company_id: int):
     return db.query(Expense).filter(
