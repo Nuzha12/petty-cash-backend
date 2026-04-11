@@ -1,11 +1,9 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from datetime import datetime
-
 from app.models.expense import Expense, ExpenseStatus
 from app.repositories import expense_repository
 from app.repositories.budget_repository import get_budget_by_category
-
 
 def create_expense(db: Session, expense, manager):
     budget = get_budget_by_category(
@@ -42,77 +40,72 @@ def create_expense(db: Session, expense, manager):
 
     return expense_repository.create_expense(db, db_expense)
 
-
 def get_expenses(db, manager):
     rows = expense_repository.get_expenses_by_company(db, manager.company_id)
-
     return [
         {
             "expense_id": r[0].expense_id,
             "amount": float(r[0].amount),
             "description": r[0].description or "",
             "category": r[1],
-            "status": r[0].status.value
+            "status": r[0].status.value,
+            "category_id": r[0].category_id
         }
         for r in rows
     ]
 
-
-def get_expense(db: Session, expense_id: int, manager):
-    expense = expense_repository.get_expense_by_id(db, expense_id, manager.company_id)
-    if not expense:
-        raise HTTPException(404, "Expense not found")
-    return expense
-
-
 def update_expense(db: Session, expense_id: int, data, manager):
     expense = expense_repository.get_expense_by_id(db, expense_id, manager.company_id)
-
     if not expense:
         raise HTTPException(404, "Expense not found")
-
     if expense.status != ExpenseStatus.pending:
         raise HTTPException(400, "Only pending expenses can be updated")
-
     update_data = data.model_dump(exclude_unset=True)
     return expense_repository.update_expense(db, expense, update_data)
 
-
 def delete_expense(db: Session, expense_id: int, manager):
     expense = expense_repository.get_expense_by_id(db, expense_id, manager.company_id)
-
     if not expense:
         raise HTTPException(404, "Expense not found")
-
     if expense.status != ExpenseStatus.pending:
-        raise HTTPException(400, "Cannot delete approved/rejected expense")
-
+        raise HTTPException(400, "Cannot delete processed expense")
     return expense_repository.delete_expense(db, expense)
-
 
 def approve_expense(db: Session, expense_id: int, manager):
     expense = expense_repository.get_expense_by_id(db, expense_id, manager.company_id)
-
     if not expense:
         raise HTTPException(404, "Expense not found")
-
     if expense.status != ExpenseStatus.pending:
         raise HTTPException(400, "Already processed")
-
-    return expense_repository.update_expense_status(db, expense, ExpenseStatus.approved)
-
+    return expense_repository.update_expense_status(db, expense.expense_id, ExpenseStatus.approved)
 
 def reject_expense(db: Session, expense_id: int, manager):
     expense = expense_repository.get_expense_by_id(db, expense_id, manager.company_id)
-
     if not expense:
         raise HTTPException(404, "Expense not found")
-
     if expense.status != ExpenseStatus.pending:
         raise HTTPException(400, "Already processed")
+    return expense_repository.update_expense_status(db, expense.expense_id, ExpenseStatus.rejected)
 
-    return expense_repository.update_expense_status(db, expense, ExpenseStatus.rejected)
-
+def get_dashboard_summary(db: Session, manager):
+    now = datetime.now()
+    expenses = expense_repository.get_expenses_by_company(db, manager.company_id)
+    total_approved = sum(float(e[0].amount) for e in expenses if e[0].status == ExpenseStatus.approved)
+    total_pending = sum(float(e[0].amount) for e in expenses if e[0].status == ExpenseStatus.pending)
+    recent = expenses[:5]
+    return {
+        "total_expense": total_approved + total_pending,
+        "month": f"{now.month}/{now.year}",
+        "recent_transactions": [
+            {
+                "amount": float(e[0].amount),
+                "description": e[0].description,
+                "category": e[1],
+                "status": e[0].status.value
+            }
+            for e in recent
+        ]
+    }
 
 def get_dashboard_summary(db: Session, manager):
     now = datetime.now()
@@ -125,13 +118,15 @@ def get_dashboard_summary(db: Session, manager):
 
     return {
         "total_expense": total_approved + total_pending,
+        "total_approved": total_approved,
+        "total_pending": total_pending,
         "month": f"{now.month}/{now.year}",
         "recent_transactions": [
             {
                 "amount": float(e[0].amount),
                 "description": e[0].description,
                 "category": e[1],
-                "status": e[0].status.value
+                "status": e[0].status.value if hasattr(e[0].status, 'value') else e[0].status
             }
             for e in recent
         ]

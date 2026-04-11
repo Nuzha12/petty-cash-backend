@@ -50,8 +50,22 @@ def update_expense(db: Session, expense: Expense, update_data: dict):
     db.refresh(expense)
     return expense
 
-def update_expense_status(db: Session, expense: Expense, status: ExpenseStatus):
-    expense.status = status
-    db.commit()
-    db.refresh(expense)
+def update_expense_status(db: Session, expense_id: int, status: str):
+    expense = db.query(Expense).filter(Expense.expense_id == expense_id).first()
+    if expense:
+        expense.status = status
+        db.commit()
+        db.refresh(expense)
     return expense
+
+def get_expenses_by_company(db: Session, company_id: int):
+    return db.query(
+        Expense,
+        Category.name
+    ).join(
+        Category, Expense.category_id == Category.category_id
+    ).filter(
+        Expense.company_id == company_id
+    ).order_by(
+        Expense.created_at.desc()
+    ).all()

@@ -1,8 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-
 from pydantic import BaseModel, Field, ConfigDict
-
 
 class BudgetBase(BaseModel):
     category_id: int
@@ -13,14 +11,11 @@ class BudgetBase(BaseModel):
 class BudgetCreate(BudgetBase):
     pass
 
-
 class BudgetResponse(BudgetBase):
     budget_id: int
     company_id: int
+    category_name: str | None = None
     created_at: datetime
     updated_at: datetime | None = None
 
-
     model_config = ConfigDict(from_attributes = True)
-
-
