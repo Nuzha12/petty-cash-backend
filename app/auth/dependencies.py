@@ -1,5 +1,7 @@
+
 import os
 import logging
+from typing import Union
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, ExpiredSignatureError, JWTError
@@ -9,7 +11,7 @@ logger = logging.getLogger("auth")
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 class TokenData:
@@ -18,13 +20,19 @@ class TokenData:
         self.company_id = company_id
 
 
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
+def verify_token(
+    credentials: Union[HTTPAuthorizationCredentials, str, None] = Depends(security)
+):
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    if isinstance(credentials, str):
+        token = credentials
+    else:
+        token = credentials.credentials
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-
-        logger.info(f"Token valid: {payload}")
 
         return TokenData(
             manager_id=payload.get("manager_id"),

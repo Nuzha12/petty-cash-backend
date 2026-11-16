@@ -69,3 +69,16 @@ def get_expenses_by_company(db: Session, company_id: int):
     ).order_by(
         Expense.created_at.desc()
     ).all()
+
+def get_report_data(db: Session, company_id: int, month: int, year: int):
+    return db.query(
+        Expense.expense_date,
+        Category.name,
+        Expense.amount,
+        Expense.description,
+        Expense.status
+    ).join(Category, Expense.category_id == Category.category_id).filter(
+        Expense.company_id == company_id,
+        extract("month", Expense.expense_date) == month,
+        extract("year", Expense.expense_date) == year
+    ).all()

@@ -86,3 +86,40 @@ def get_specific_date_expenses(db: Session, company_id: int, target_date: str):
         func.date(Expense.expense_date) == target_date,
         Expense.status == ExpenseStatus.approved
     ).group_by(Category.name).all()
+
+
+def get_detailed_report_data(db: Session, company_id: int, type: str, month: int, year: int, date_str: str = None):
+    query = db.query(
+        Expense.expense_date,
+        Category.name.label("category_name"),
+        Expense.amount,
+        Expense.description,
+        Expense.status
+    ).join(Category, Expense.category_id == Category.category_id).filter(
+        Expense.company_id == company_id,
+        Expense.status == ExpenseStatus.approved
+    )
+
+    if type == "daily" and date_str:
+        query = query.filter(Expense.expense_date == date_str)
+    elif type == "monthly":
+        query = query.filter(extract("month", Expense.expense_date) == month,
+                             extract("year", Expense.expense_date) == year)
+    elif type == "annual":
+        query = query.filter(extract("year", Expense.expense_date) == year)
+
+    results = query.order_by(Expense.expense_date.desc()).all()
+
+    total = sum(r[2] for r in results)
+
+    transactions = [
+        {
+            "date": str(r[0]),
+            "category": r[1],
+            "amount": float(r[2]),
+            "description": r[3] or "No description",
+            "status": r[4].value if hasattr(r[4], 'value') else str(r[4])
+        } for r in results
+    ]
+
+    return {"total_expenses": float(total), "transactions": transactions}
